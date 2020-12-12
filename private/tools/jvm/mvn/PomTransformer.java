@@ -10,6 +10,7 @@ import org.w3c.dom.Node;
 import org.xembly.Directive;
 import org.xembly.Xembler;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -29,17 +30,24 @@ public interface PomTransformer {
     public abstract Pom apply(Pom pom, Project project);
 
 
-
     /**
      * Transform by {@linkplain org.xembly.Xembler}
      */
-    public static class Xembly implements PomTransformer {
+    class Xembly implements PomTransformer {
+
+        public Xembly() {
+            this(Collections.emptySet());
+        }
+
+        public Xembly(Set<XemblyFeature> features) {
+            this.features = features;
+        }
 
         @AllArgsConstructor
         public enum XemblyFeature {
             ENABLED("xembly:on"),
+            NO_PARENT_RELATIVE_PATH("xembly:no-parent-rel-path"),
             NO_DROP_DEPS("xembly:no-drop-deps");
-
             private final String qname;
         }
 
@@ -53,6 +61,7 @@ public interface PomTransformer {
                 new XemblyDirrective.AppendDeps()
         );
 
+        private final Set<XemblyFeature> features;
 
         @Override
         public Pom apply(Pom pom, Project project) {
@@ -63,6 +72,7 @@ public interface PomTransformer {
             final XML origXML = pom.xml();
             final SanitizedXML xml = new SanitizedXML(origXML);
             final Set<XemblyFeature> features = getFeatures(xml);
+            features.addAll(this.features);
             if (!features.contains(XemblyFeature.ENABLED)) {
                 return xml;
             }
@@ -70,15 +80,20 @@ public interface PomTransformer {
             if (features.contains(XemblyFeature.NO_DROP_DEPS)) {
                 funcs.removeIf(func -> func instanceof XemblyDirrective.PomDropDeps);
             }
+            if (features.contains(XemblyFeature.NO_PARENT_RELATIVE_PATH)) {
+                funcs.removeIf(func -> func instanceof XemblyDirrective.PomParentRelPath);
+                funcs.add(new XemblyDirrective.DropPomParentRelPath());
+            }
 
             @SuppressWarnings("StaticPseudoFunctionalStyleMethod")
-            final Iterable<Directive> dirs = new XemblerAugment.AugmentedDirs(
-                    xml.getXpathQuery(), concat(transform(funcs, d -> d.dirs(project, xml)))
+            final Iterable<Directive> dirs = concat(transform(funcs, d -> d.dirs(project, xml)));
+            final XemblerAugment.XPathQuery query = xml.getXpathQuery();
+            final Node node = XemblerAugment.applyQuietly(
+                    XPATH_CONTEXT,
+                    query,
+                    dirs,
+                    xml.node()
             );
-            final Node node = new XemblerAugment(
-                    new Xembler(dirs),
-                    XPATH_CONTEXT
-            ).applyQuietly(xml.node());
 
             return new SanitizedXML(node);
         }

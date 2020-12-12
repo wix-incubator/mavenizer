@@ -15,7 +15,6 @@ public class CliTest {
         new CommandLine(command).parseArgs(
                 "-Oxxx=yyy",
                 "--pom=/some/pom.xml",
-                "--run-manifest=/some/repo.tar",
                 "--srcs=/some/manifest.xml");
         Assert.assertEquals(command.outputs, Collections.singletonMap("xxx", "yyy"));
     }

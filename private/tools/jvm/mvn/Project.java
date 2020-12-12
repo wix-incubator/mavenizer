@@ -22,21 +22,8 @@ public final class Project {
 
     interface ProjectView {
         Iterable<Dep> deps();
-        String groupId();
-        String artifactId();
         String parent();
-
     }
-
-    // TODO get rid of
-    @Deprecated
-    private String artifactId;
-    @Deprecated
-    private String groupId;
-
-
-    @Getter
-    private RunManifest runManifest;
 
     /**
      * Dependencies.
@@ -60,7 +47,6 @@ public final class Project {
      */
     @Builder.Default
     private List<OutputFile> outputs = Lists.newArrayList();
-
 
     /**
      * Arguments for the maven.
@@ -117,15 +103,6 @@ public final class Project {
                 return ImmutableList.copyOf(deps);
             }
 
-            @Override
-            public String groupId() {
-                return groupId;
-            }
-
-            @Override
-            public String artifactId() {
-                return artifactId;
-            }
 
             @Override
             public String parent() {

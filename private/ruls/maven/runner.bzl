@@ -89,7 +89,6 @@ def _run_mvn_impl(ctx):
 
     output_files = [def_output_jar_file, def_output_artifact_file]
     input_files = [
-        repository_info.run_manifest,
         pom_def_info.file,
         deps_manifest,
         srcs_manifest
@@ -102,7 +101,6 @@ def _run_mvn_impl(ctx):
     args.add("--jvm_flag=-Dtools.jvm.mvn.BazelLabelName=%s" % (ctx.label))
 
     args.add("run")
-    args.add("--run-manifest", repository_info.run_manifest.path)
 
     if repository_info.tar:
         args.add("--m2-repository", repository_info.tar.path)
@@ -113,9 +111,9 @@ def _run_mvn_impl(ctx):
     args.add("--write-artifact", def_output_artifact_file.path)
     args.add("--write-jar", def_output_jar_file.path)
     args.add("--pom", pom_def_info.file.path)
-    if pom_def_info.parent_file:
-        args.add("--parent-pom", pom_def_info.parent_file.path)
-        input_files.append(pom_def_info.parent_file)
+#    if pom_def_info.parent_file:
+#        args.add("--parent-pom", pom_def_info.parent_file.path)
+#        input_files.append(pom_def_info.parent_file)
     if pom_def_info.flags_line:
         args.add("--args", _foramt_flags_as_escape_str(pom_def_info.flags_line))
 

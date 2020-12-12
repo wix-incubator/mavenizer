@@ -24,9 +24,7 @@ public class Args  {
     private final List<String> goals = Lists.newArrayList();
     private final List<String> profiles = Lists.newArrayList();
     private final Map<FlagsKey, Object> ctx = Maps.newHashMap();
-
-
-
+    
     enum FlagsKey {
         SETTINGS_XML,
         LOCAL_REPOSITORY;

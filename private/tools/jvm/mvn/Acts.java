@@ -2,10 +2,13 @@ package tools.jvm.mvn;
 
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.jcabi.xml.XML;
+import com.jcabi.xml.XMLDocument;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.experimental.Accessors;
@@ -17,14 +20,12 @@ import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.cactoos.Text;
 import org.cactoos.func.UncheckedProc;
-import org.cactoos.io.BytesOf;
-import org.cactoos.io.InputOf;
-import org.cactoos.io.InputStreamOf;
-import org.cactoos.io.OutputTo;
+import org.cactoos.io.*;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.List;
@@ -33,6 +34,29 @@ import java.util.Optional;
 @UtilityClass
 public final class Acts {
 
+    /**
+     * Unarchive repository snapshot into M2_HOME.
+     */
+    @AllArgsConstructor
+    @Slf4j
+    static class RepositoryArchiver implements Act {
+
+        private final Path image;
+
+        private final Path settingsXml;
+
+        @SneakyThrows
+        @Override
+        public Project accept(Project project) {
+            XML settings = new XMLDocument(new InputStreamOf(this.settingsXml));
+            final String localRepoPath = settings.xpath("/settings/localRepository/text()").get(0);
+            project.args().tag(Args.FlagsKey.SETTINGS_XML, this.settingsXml.toFile());
+
+            final Archive.LocalRepositoryDir archive = new Archive.LocalRepositoryDir(Paths.get(localRepoPath));
+            project.outputs().add(new OutputFile.ArchiveOf(archive, new OutputTo(image)));
+            return project;
+        }
+    }
 
     /**
      * Install deps into M2_HOME folder.
@@ -66,10 +90,8 @@ public final class Acts {
 
         @Override
         public Project accept(Project project) {
-            final boolean useRepoSnapshot = project.runManifest().isUseRepoSnapshot();
-
             project.args()
-                    .offline(useRepoSnapshot)
+                    .offline(true)
                     .append("clean", "install");
 
             maven.run(project);
@@ -156,6 +178,40 @@ public final class Acts {
     }
 
     /**
+     * Process pom file from template.
+     */
+    @Slf4j
+    static class PomFileRunner implements Act {
+
+        private final PomTransformer transformer = new PomTransformer.Xembly(
+                ImmutableSet.of(PomTransformer.Xembly.XemblyFeature.NO_PARENT_RELATIVE_PATH)
+        );
+
+        @Override
+        @lombok.SneakyThrows
+        public Project accept(Project project) {
+            final Path syntheticPom = project.pom();
+
+            final Pom pom = transformer.apply(
+                    new Pom.Cached(
+                            new Pom.Standard(project.pomTemplate())),
+                    project
+            );
+
+            final XML pomXml = pom.xml();
+
+            Files.copy(new InputStreamOf(pomXml.toString()), syntheticPom);
+
+            if (log.isDebugEnabled()) {
+                log.debug("\n{}", pomXml);
+            }
+
+            return project.toBuilder().pomXML(pom).build();
+        }
+    }
+
+
+    /**
      * Prepare settings xml.
      */
     @Slf4j
@@ -184,7 +240,7 @@ public final class Acts {
                     .build();
 
             final Text xml = new Template.Mustache(
-                    new InputOf(project.runManifest().getSettingsXml()),
+                    new ResourceOf("settings.mustache.xml"),
                     props
             ).eval();
 
@@ -195,7 +251,6 @@ public final class Acts {
             return project;
         }
     }
-
 
     /**
      * Unarchive repository snapshot into M2_HOME.
@@ -229,7 +284,7 @@ public final class Acts {
      */
     @SuppressWarnings({"ResultOfMethodCallIgnored"})
     @Slf4j
-    static class ParentPOM implements Act {
+    static class ParentPomRelative implements Act {
 
         @SneakyThrows
         @Override

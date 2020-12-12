@@ -69,13 +69,6 @@ public interface Archive {
         @Delegate
         private final Archive archive;
 
-        /**
-         * Ctor.
-         * @param project project
-         */
-        public LocalRepositoryDir(Project project) {
-            this(project.repository());
-        }
 
         /**
          * Ctor.

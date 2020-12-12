@@ -5,19 +5,19 @@
 
 _buildpack = "@maven_e2e//:pinned_maven_repository"
 
-sh_library(
-    name = "MavenImageDummy",
-    srcs = ["dummy.sh"],
-    data = [_buildpack],
-)
-
-sh_test(
-    name = "MavenImageTest",
-    srcs = ["test_files_exist.sh"],
-    args = ["external/maven_e2e/pinned_maven_repository.manifest.xml"],
-    data = [_buildpack],
-    deps = [":MavenImageDummy"]
-)
+#sh_library(
+#    name = "MavenImageDummy",
+#    srcs = ["dummy.sh"],
+#    data = [_buildpack],
+#)
+#
+#sh_test(
+#    name = "MavenImageTest",
+#    srcs = ["test_files_exist.sh"],
+#    args = ["external/maven_e2e/pinned_maven_repository.tar"],
+#    data = [_buildpack],
+#    deps = [":MavenImageDummy"]
+#)
 
 #
 # Snap

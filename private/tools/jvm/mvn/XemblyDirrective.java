@@ -13,6 +13,18 @@ public interface XemblyDirrective {
 
     Iterable<Directive> dirs(Project project, XML xml);
 
+    ImmutableList<XemblyDirrective> PrepareSnapshot = ImmutableList.of(
+            new PomDefaultStruc(),
+            new PomDropDeps(),
+            new PomParentRelPath()
+    );
+
+    ImmutableList<XemblyDirrective> ExecuteBuild = ImmutableList.of(
+            new PomDefaultStruc(),
+            new PomParentRelPath(),
+            new PomDropDeps(),
+            new AppendDeps()
+    );
 
     class PomDefaultStruc implements XemblyDirrective {
         @Override
@@ -31,6 +43,15 @@ public interface XemblyDirrective {
             return new Directives()
                     .xpath("/project/parent")
                     .addIf("relativePath").set(view.parent());
+        }
+    }
+
+    class DropPomParentRelPath implements XemblyDirrective {
+        @Override
+        public Iterable<Directive> dirs(Project project, XML xml) {
+            return new Directives()
+                    .xpath("/project/parent/relativePath")
+                    .remove();
         }
     }
 

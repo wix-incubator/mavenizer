@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.ToString;
 import lombok.experimental.Delegate;
+import lombok.experimental.UtilityClass;
 import org.cactoos.Scalar;
 import org.w3c.dom.Node;
 import org.xembly.*;
@@ -22,19 +23,21 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.google.common.collect.Iterables.concat;
+import static com.google.common.collect.Iterables.transform;
 
-@AllArgsConstructor
+
+@UtilityClass
 public class XemblerAugment {
 
-    private final Xembler xembler;
-
-    private final XPathContext context;
-
-
     @SneakyThrows
-    public Node applyQuietly(final Node dom) {
-        return withinContext(this.context, () -> {
-            return this.xembler.apply(dom);
+    public Node applyQuietly(XPathContext context, XPathQuery query, Iterable<Directive> dirs, Node dom) {
+        return withinContext(context, () -> {
+            return new Xembler(
+            new XemblerAugment.AugmentedDirs(
+                    query, dirs
+            )
+            ).apply(dom);
         });
     }
 

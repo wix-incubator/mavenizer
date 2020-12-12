@@ -39,9 +39,6 @@ declare_pom = rule(
 )
 
 RepositoryInfo = provider(fields={
-    "run_manifest": """
-    Consolidated repository manifest
-""",
     "tar": "Snapshot"
 })
 
@@ -54,7 +51,6 @@ _BuildDef = provider(fields={
 
 def _maven_repository_impl(ctx):
     tar = None
-    builds_run_manifest = ctx.outputs.manifest
 
     reposiotry_def_args = ctx.actions.args()
     pom_providers = [dep[PomDeclarationInfo] for dep in ctx.attr.modules]
@@ -82,10 +78,9 @@ def _maven_repository_impl(ctx):
     args.add('build-repository')
     args.add('--def', build_def.path)
 
-    outputs = [builds_run_manifest]
+    outputs = []
 
     args.add('--settings', ctx.attr.unsafe_global_settings)
-    args.add('--global-manifest', builds_run_manifest.path)
 
     if not ctx.attr.use_global_cache:
         tar_name = ctx.label.name + ".tar"
@@ -106,16 +101,12 @@ def _maven_repository_impl(ctx):
             files= depset(outputs)
         ),
         RepositoryInfo(
-           run_manifest =  builds_run_manifest,
            tar = tar
         )
     ]
 
 maven_repository = rule(
     implementation = _maven_repository_impl,
-    outputs = {
-      "manifest": "%{name}.manifest.xml"
-    },
     attrs = {
         "modules": attr.label_list(),
         "unsafe_global_settings": attr.string(),

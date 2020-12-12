@@ -3,6 +3,7 @@ package tools.jvm.mvn;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.io.ByteSource;
+import com.google.common.io.Files;
 import com.jcabi.xml.XML;
 import com.jcabi.xml.XMLDocument;
 import com.jcabi.xml.XPathContext;
@@ -26,6 +27,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.nio.file.Path;
 import java.util.List;
 
 public interface Pom {
@@ -34,6 +36,11 @@ public interface Pom {
     String POM_NS_URI = "http://maven.apache.org/POM/4.0.0";
     String POM_NS = "pom";
 
+
+    @SuppressWarnings("UnstableApiUsage")
+    static Pom load(Path path) {
+        return new Cached(new Standard(Files.asByteSource(path.toFile())));
+    }
 
     /**
      * Global xpath context.
@@ -48,6 +55,8 @@ public interface Pom {
      * @return xml
      */
     XML xml();
+
+
     /**
      * Group id
      * @return str
@@ -75,6 +84,14 @@ public interface Pom {
      */
     default String version() {
         return xml().xpath("/project/version/text()").get(0);
+    }
+
+    /**
+     * Pretty print.
+     * @return str
+     */
+    default String toPrettyPrint() {
+        return new PrettyPrintXml(xml()).asString();
     }
 
     /**

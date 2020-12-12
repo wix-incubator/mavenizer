@@ -5,9 +5,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
-import org.cactoos.io.InputOf;
-import org.cactoos.io.OutputTo;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -22,9 +19,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class Cli {
 
-//    static {
-//        SLF4JConfigurer.setLogLevel(SLF4JConfigurer.ToolLogLevel.DEBUG);
-//    }
+    static {
+        SLF4JConfigurer.setLogLevel(SLF4JConfigurer.ToolLogLevel.INFO);
+    }
 
     static class ArgsFactory {
 
@@ -52,10 +49,6 @@ public class Cli {
     @CommandLine.Command(name = "build-repository")
     public static class MkRepository implements Runnable {
 
-//        static {
-//            SLF4JConfigurer.setLogLevel(SLF4JConfigurer.ToolLogLevel.DEBUG);
-//        }
-
         @CommandLine.Mixin
         public ArgsFactory argsFactory = new ArgsFactory();
 
@@ -77,25 +70,23 @@ public class Cli {
         public void run() {
             final Maven maven = new Maven.BazelInvoker();
             final Args args = argsFactory.newArgs();
-            args.tag(Args.FlagsKey.SETTINGS_XML, globalSettingsXml.toFile());
 
             final Project simple = Project.builder()
                     .args(args)
                     .build();
 
             new Act.Iterative(
-                    new ActGlobalSettings(
-                            new InputOf(globalSettingsXml),
-                            new OutputTo(globalRepositoryManifest),
-                            this.repositorySnapshot
+                    new Acts.RepositoryArchiver(
+                            this.repositorySnapshot,
+                            this.globalSettingsXml
                     ),
                     new ActAssemble(
-                            new Builds.PomDefinitions(pomDeclarations),
+                            new Builds.PomDefinitions(this.pomDeclarations),
                             new Act.Iterative(
                                     new Acts.InstallParentPOM(
                                             maven
                                     ),
-                                    new Acts.ParentPOM(),
+                                    new Acts.ParentPomRelative(),
                                     new Acts.PomFile(),
                                     new Acts.MvnGoOffline(
                                             maven
@@ -123,10 +114,6 @@ public class Cli {
                 paramLabel = "REPO", description = "the repository tar")
         public Path extRepository;
 
-        @CommandLine.Option(names = {"--run-manifest"}, required = true,
-                paramLabel = "REPO", description = "the repository tar")
-        public Path runManifest;
-
         @CommandLine.Option(names = {"--deps"}, paramLabel = "DEPS", description = "the deps manifest")
         public File deps;
 
@@ -137,8 +124,6 @@ public class Cli {
         @CommandLine.Option(names = {"-O"}, description = "declared bazel output -> relatice file path /target")
         public Map<String, String> outputs = ImmutableMap.of();
 
-        @CommandLine.Option(names = {"--parent-pom"}, paramLabel = "P", description = "parent pom path")
-        public Path parentPom;
 
         @CommandLine.Option(names = {"-wid", "--write-artifact"}, paramLabel = "P",
                 description = "write archived artifact from repo, except default jar")
@@ -166,27 +151,21 @@ public class Cli {
                     .collect(Collectors.toList());
 
             final Project project = Project.builder()
-                    .parentPom(parentPom)
                     .pom(pom)
                     .args(args)
                     .deps(getDeps())
                     .workDir(workDir)
                     .pomTemplate(Files.asByteSource(this.pom.toFile()))
                     .outputs(outputs)
-                    .runManifest(new RunManifest(runManifest))
                     .build();
 
             new Act.Iterative(
                     new Acts.Repository(
-                            extRepository
+                            this.extRepository
                     ),
                     new Acts.SettingsXml(),
                     new Acts.Deps(),
-                    new Acts.InstallParentPOM(
-                            maven
-                    ),
-                    new Acts.ParentPOM(),
-                    new Acts.PomFile(),
+                    new Acts.PomFileRunner(),
                     new Acts.MvnBuild(
                             maven
                     ),
